@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14283a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drone Studio">
+<title>CEI Drone Studio</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --ink:#14283a; --ink-2:#4a5d6c; --paper:#f1f4f2; --white:#fff; --line:#d3dbd8;
+  --teal:#0f7f7a; --orange:#ff5a1f; --signal:#f2c230; --danger:#c4311f;
+  --r:8px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;height:100dvh;background:var(--paper);color:var(--ink);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+/* barra superior */
+#top{flex:0 0 auto;display:flex;align-items:center;gap:10px;height:48px;padding:0 12px;padding-top:env(safe-area-inset-top);background:var(--ink);color:#fff}
+#top .brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.01em;font-size:15px}
+#top .brand svg{width:26px;height:26px}
+#top .sp{flex:1}
+#proyNombre{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.12);border:0;border-radius:var(--r);padding:7px 12px;color:#fff;cursor:pointer;min-height:36px}
+#net{background:var(--signal);color:var(--ink);border-radius:99px;padding:3px 10px;font-weight:600;font-size:12px}
+
+/* estructura */
+#shell{flex:1;min-height:0;display:flex;flex-direction:column}
+#mapwrap{position:relative;flex:1;min-height:150px;background:#dde4e1}
+#map{display:block;width:100%;height:100%;cursor:grab}
+#map.dibujando{cursor:crosshair}
+#panel{flex:0 0 auto;height:46dvh;display:flex;flex-direction:column;background:var(--paper);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(20,40,58,.10);position:relative;z-index:2}
+body.sheet-open #panel{height:80dvh}
+#btnSheet{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:64px;height:28px;border-radius:14px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#btnSheet::before{content:"";width:28px;height:4px;border-radius:2px;background:var(--ink-2)}
+#tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);background:#fff;padding-top:8px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:6px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--ink-2);cursor:pointer;min-height:48px}
+.tab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--ink);font-weight:650;border-bottom-color:var(--orange)}
+#panelBody{flex:1;overflow:auto;padding:4px 14px 28px;padding-bottom:calc(28px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+@media (min-width:920px){
+  #shell{flex-direction:row}
+  #panel{order:-1;width:430px;height:auto;border-top:0;border-right:1px solid var(--line);box-shadow:6px 0 18px rgba(20,40,58,.08)}
+  body.sheet-open #panel{height:auto}
+  #btnSheet{display:none}
+  #tabs{padding-top:0}
+  #proyNombre{max-width:30vw}
+}
+
+/* controles del mapa */
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:8px}
+.mapctl button{width:44px;height:44px;border-radius:var(--r);border:1px solid rgba(20,40,58,.25);background:rgba(255,255,255,.95);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.mapctl svg{width:22px;height:22px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#modebar{position:absolute;left:50%;top:10px;transform:translateX(-50%);max-width:calc(100% - 80px);display:flex;align-items:center;gap:8px;background:var(--ink);color:#fff;padding:6px 8px 6px 14px;border-radius:99px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#modebar[hidden]{display:none}
+#modebar .mb-msg{font-weight:600;padding-right:4px}
+#modebar .btn{background:#fff}
+
+/* componentes */
+.sec{padding:14px 0 10px;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0}
+.sec h3{margin:0 0 8px;font-size:15px;font-weight:700}
+.sec h4{margin:12px 0 2px;font-size:13px;font-weight:700;color:var(--ink-2)}
+.hint{color:var(--ink-2);font-size:12.5px;margin:6px 0}
+.empty{color:var(--ink-2);margin:6px 0}
+.stack{display:flex;flex-direction:column;gap:8px}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row-actions.between{justify-content:space-between}
+.row-actions select{flex:1;min-width:140px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 14px;border-radius:var(--r);border:1.5px solid var(--ink);background:#fff;color:var(--ink);font-weight:600;cursor:pointer;text-align:center;line-height:1.2}
+.btn.sm{min-height:36px;padding:5px 12px}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:var(--ink)}
+.btn.quiet{border-color:transparent;background:transparent;text-decoration:underline;text-underline-offset:3px}
+.btn.danger{color:var(--danger);border-color:currentColor}
+.btn.quiet.danger{border-color:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.file input{display:none}
+.btn.file:focus-within{outline:3px solid var(--orange);outline-offset:2px}
+select,input[type=number],input[type=text],input[type=datetime-local],textarea{width:100%;min-height:42px;padding:8px 10px;border:1.5px solid #9fb0b8;border-radius:var(--r);background:#fff}
+textarea{min-height:64px;resize:vertical}
+.field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.field .lbl{font-weight:600;font-size:13px}
+.field .note{font-size:12px;color:var(--ink-2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.check{display:flex;gap:10px;align-items:flex-start;min-height:34px;padding:5px 0;cursor:pointer}
+.check input{width:20px;height:20px;margin-top:1px;flex:0 0 auto;accent-color:var(--teal)}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dotted #b8c5cb}
+.kv .k{color:var(--ink-2)}
+.kv .v{text-align:right;font-variant-numeric:tabular-nums}
+.kv .v.strong{font-weight:700;font-size:15px}
+.warn{margin:8px 0;padding:8px 10px;border-left:4px solid var(--signal);background:#fff7d6;border-radius:0 var(--r) var(--r) 0}
+.warn.small{font-size:12.5px}
+.sorties{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.sortie{display:flex;flex-direction:column;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r);background:#fff;font-size:12.5px}
+.adap{padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.adap.rec{border-color:var(--orange);box-shadow:inset 4px 0 0 var(--orange)}
+.adap-h{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.tag{font-size:12px;font-weight:650;padding:2px 8px;border-radius:99px;background:var(--orange);color:var(--ink)}
+.tag.ok{background:#cdeae6;color:#0b3f3c}.tag.wip{background:#e6e9ea;color:var(--ink-2)}
+details{margin:8px 0}
+summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+ol{padding-left:20px;margin:6px 0}
+ol li{margin:4px 0}
+.steps li{margin:6px 0}
+pre.code{margin:8px 0;padding:10px 12px;background:var(--ink);color:#e8f1f5;border-radius:var(--r);font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:auto}
+.caps .cap{padding:8px 0;border-bottom:1px dotted #b8c5cb}
+.caps .tag{margin-left:8px}
+.vuelo{padding:8px 0;border-bottom:1px dotted #b8c5cb}
+.count{font-weight:700}
+.prog{display:flex;flex-direction:column;gap:6px}.prog .bar{height:8px;border-radius:4px;background:var(--teal);width:0;transition:width .15s}
+dialog{border:0;border-radius:12px;padding:18px;max-width:min(92vw,460px);width:100%;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(20,40,58,.55)}
+dialog h3{margin:0 0 4px}
+.opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1.5px solid var(--ink);border-radius:var(--r);background:#fff;cursor:pointer}
+.opt span{color:var(--ink-2);font-size:12.5px}
+#toast{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;max-width:min(92vw,520px);text-align:center;z-index:20;transition:opacity .2s,transform .2s}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0f7f7a"/><path d="M6 9h20M6 16h20M6 23h20" stroke="#fff" stroke-width="1.6" opacity=".55"/><path d="M6 9h20v7H6v7h20" fill="none" stroke="#ff5a1f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <span>CEI Drone Studio</span>
+  </div>
+  <span class="sp"></span>
+  <span id="net" hidden>Sin conexión</span>
+  <button id="proyNombre" type="button" aria-label="Cambiar de terreno"></button>
+</header>
+<div id="shell">
+  <div id="mapwrap">
+    <canvas id="map" aria-label="Mapa del terreno y de la misión de vuelo" role="img"></canvas>
+    <div id="modebar" hidden></div>
+    <div class="mapctl">
+      <button id="btnZoomIn" type="button" aria-label="Acercar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="btnZoomOut" type="button" aria-label="Alejar"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button id="btnFit" type="button" aria-label="Ver todo el terreno"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button id="btnLoc" type="button" aria-label="Mi ubicación"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    </div>
+  </div>
+  <section id="panel" aria-label="Panel de trabajo">
+    <button id="btnSheet" type="button" aria-label="Subir o bajar el panel" aria-expanded="false"></button>
+    <nav id="tabs" role="tablist" aria-label="Secciones"></nav>
+    <div id="panelBody"></div>
+  </section>
+</div>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/geo.js"></script>
+<script src="js/zip.js"></script>
+<script src="js/mission.js"></script>
+<script src="js/export.js"></script>
+<script src="js/exif.js"></script>
+<script src="js/importers.js"></script>
+<script src="js/fotos.js"></script>
+<script src="js/adapters.js"></script>
+<script src="js/map.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

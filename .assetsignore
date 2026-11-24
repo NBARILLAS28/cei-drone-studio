@@ -1,0 +1,7 @@
+tests
+README.md
+wrangler.jsonc
+.assetsignore
+.git
+node_modules
+*.md
